@@ -16,16 +16,16 @@
 
 | 使っているAI | 使うフォルダ | 必要なもの |
 |---|---|---|
-| Claude | `claude/` | Claudeのアカウント（毎朝の定期タスクを使うので、有料プランが前提） |
+| Claude | `claude/` | Claudeのアカウント（毎朝の定期タスクを使うので、有料プランが前提）。ダウンロードしただけでは動かず、チャットで2回頼む手順がある |
 | Gemini | `gemini/` | Googleアカウント、Gemini APIのキー、OpenAlexのAPIキー（どちらも無料で発行できる） |
 
-- Claude版：`claude/立ち上げ手順.md` から始めます。自分のClaudeに2回頼むだけで立ち上がります。
+- Claude版：`claude/はじめに.md` から始めます。ファイルを2つ添付して、決まった文を2回送るだけで立ち上がります。詳しい説明は `claude/立ち上げ手順.md` にあります。
 - Gemini版：`gemini/gemini版_構築手順書.md` をGeminiに渡し、手順書に沿って一緒に作ります。Google スプレッドシートと Apps Script で動きます。
 
 ## フォルダの中身
 
 ```
-claude/   Claude版：ページ（index.html）、定期タスクの指示文、立ち上げ手順、使い方
+claude/   Claude版：はじめに、ページ（index.html）、定期タスクの指示文、立ち上げ手順、使い方
 gemini/   Gemini版：構築手順書、使い方
 tools/    Windows用の補助ツール（任意）
 docs/     開発の記録
