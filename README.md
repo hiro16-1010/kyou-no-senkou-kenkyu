@@ -18,8 +18,8 @@
 
 [リリースのページ](https://github.com/hiro16-1010/kyou-no-senkou-kenkyu/releases/latest)の「Assets」から、使うAIに合わせて片方のzipをダウンロードします。
 
-- Claude版：`今日の先行研究_キット.zip`
-- Gemini版：`今日の先行研究_Gemini版キット.zip`
+- Claude版：`kyou-no-senkou-kenkyu_claude.zip`
+- Gemini版：`kyou-no-senkou-kenkyu_gemini.zip`
 
 緑の「Code」ボタンの「Download ZIP」は、Windowsでファイル名が文字化けすることがあるので使わないでください。うまく動かないときは、このリポジトリの「Issues」で知らせてください。
 
