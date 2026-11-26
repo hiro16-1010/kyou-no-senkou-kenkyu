@@ -178,6 +178,9 @@ h1 { font-family: var(--font-display); font-size: 26px; margin: 0; text-wrap: ba
 .tl .tl-date { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); width: 4.5em; }
 .tl .tl-rx { white-space: nowrap; font-size: 12px; color: var(--muted); width: 8em; }
 .tl .tl-meta { font-size: 12px; color: var(--muted); }
+.tl-toggle { font: inherit; font-size: 12px; margin-top: 4px; padding: 0; border: 0; background: none; color: var(--accent); cursor: pointer; }
+.tl-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tl .tl-detail > td { padding: 4px 8px 16px; background: var(--bg); }
 .vsec h3 { font-size: 14px; margin: 0; }
 .vlink { font: inherit; font-size: 13px; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .vlink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -513,6 +516,39 @@ function fmtDate(d) {
   return `${m[1]}年${+m[2]}月${+m[3]}日（${w}）`;
 }
 
+/* ---------- PDFの保存（保存依頼ファイルを作り、PC側の「論文を保存.bat」がダウンロードする） ---------- */
+function pdfUrlOf(p, url, isJstage) {
+  if (isJstage) return url.replace(/\/_article\//, "/_pdf/");
+  const oa = safeUrl(p.oaUrl);
+  return oa || null;
+}
+function saveButton(p, url, isJstage) {
+  const wrap = el("span", { class: "save-wrap" });
+  const pdf = pdfUrlOf(p, url, isJstage);
+  if (!pdf) {
+    wrap.appendChild(el("span", { class: "note", text: "PDFは大学のログインが必要なため、自動保存できません（下の入手ルートを使ってください）" }));
+    return wrap;
+  }
+  const b = el("button", { class: "mini", type: "button", text: "PDFを保存" });
+  const msg = el("span", { class: "copied", "aria-live": "polite" });
+  b.addEventListener("click", async () => {
+    const dl = await claude.use("downloads");
+    if (!dl) { msg.textContent = "この画面ではファイルを保存できません。"; return; }
+    const d = new Date();
+    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    const data = JSON.stringify({ savedDate: ymd, title: p.title || "", pdfUrl: pdf, pageUrl: url || "", paperId: p.id || "" }, null, 1);
+    try {
+      await dl.save({ filename: `論文保存_${p.id || ymd}.json`, data });
+      msg.textContent = "保存依頼をダウンロードしました。キットの tools にある「論文を保存.bat」（Windows用・任意）をダブルクリックすると、PDFが保存されます。";
+    } catch (e) {
+      msg.textContent = e && e.code === "declined" ? "保存を取りやめました。" : "保存依頼を作れませんでした。もう一度押してください。";
+    }
+  });
+  wrap.appendChild(b); wrap.appendChild(msg);
+  return wrap;
+}
+
+const openCards = new Set();
 function card(p) {
   const role = ROLE[p.role] || ROLE.wide;
   const status = reactions[p.id] || null;
@@ -540,6 +576,7 @@ function card(p) {
   const acc = el("div", { class: "access" });
   if (url) acc.appendChild(el("a", { href: url, target: "_blank", rel: "noopener", text: "論文ページを開く" }));
   const isJstage = url && /jstage\.jst\.go\.jp/.test(url);
+  acc.appendChild(saveButton(p, url, isJstage));
   c.appendChild(acc);
   if (!isJstage) {
     const vi = [p.volume ? `${p.volume}巻` : "", p.issue ? `${p.issue}号` : "", p.pages ? ` pp.${p.pages}` : ""].join("");
@@ -602,8 +639,24 @@ function render() {
     const RL = { read: "読んだ・興味あり", later: "あとで読む", pass: "パス" };
     for (const d of dates) for (const p of byDate.get(d).sort((a, b) => (a.slot || 9) - (b.slot || 9))) {
       const u = safeUrl(p.url);
-      const titleCell = el("td", {}, [u ? el("a", { href: u, target: "_blank", rel: "noopener", text: p.title || "（タイトルなし）" }) : (p.title || "（タイトルなし）"), el("div", { class: "tl-meta", text: [p.authors, p.year].filter(Boolean).join("　") })]);
+      const open = openCards.has(p.id);
+      const tg = el("button", { class: "tl-toggle", type: "button", "aria-expanded": String(open), text: open ? "▾ カードを閉じる" : "▸ カードを開く" });
+      const titleCell = el("td", {}, [u ? el("a", { href: u, target: "_blank", rel: "noopener", text: p.title || "（タイトルなし）" }) : (p.title || "（タイトルなし）"), el("div", { class: "tl-meta", text: [p.authors, p.year].filter(Boolean).join("　") }), tg]);
       tbl.appendChild(el("tr", {}, [el("td", { class: "tl-date", text: d ? d.slice(5).replace("-", "/") : "" }), titleCell, el("td", { class: "tl-rx", text: RL[reactions[p.id]] || "—" })]));
+      const detail = el("tr", { class: "tl-detail" });
+      const cell = el("td", { colspan: "3" });
+      detail.appendChild(cell);
+      detail.hidden = !open;
+      if (open) cell.appendChild(card(p));
+      tg.addEventListener("click", () => {
+        const now = detail.hidden;
+        if (now && !cell.firstChild) cell.appendChild(card(p));
+        detail.hidden = !now;
+        if (now) openCards.add(p.id); else openCards.delete(p.id);
+        tg.setAttribute("aria-expanded", String(now));
+        tg.textContent = now ? "▾ カードを閉じる" : "▸ カードを開く";
+      });
+      tbl.appendChild(detail);
     }
     feed.appendChild(tbl);
     return;
